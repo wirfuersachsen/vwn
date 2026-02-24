@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { Trash2, CheckSquare, Square, ClipboardList, Scissors, ListChecks, Info } from 'lucide-react';
 
+/**
+ * Namens-Checkliste App
+ * Erlaubt das Extrahieren von Namen aus unstrukturierten Textdaten
+ * und erstellt daraus eine interaktive Checkliste.
+ */
 export default function App() {
   const [inputText, setInputText] = useState('');
   const [names, setNames] = useState([]);
@@ -13,13 +18,12 @@ export default function App() {
     const extractedNames = [];
     
     lines.forEach((line) => {
-      // Flexible Heuristik zur Namenserkennung (Datenschutz-konform):
+      // Flexible Heuristik zur Namenserkennung:
       // Eine Zeile wird als Name akzeptiert, wenn sie:
       // 1. Nicht leer ist
       // 2. Kein Euro-Zeichen oder Währungssymbole enthält
       // 3. NICHT mit einer Zahl beginnt (filtert PLZ, Hausnummern-Zeilen oder Zähler)
       // 4. Mindestens einen Buchstaben enthält
-      // 5. Keine typischen Adress-Keywords enthält
       
       const startsWithNumber = /^\d/.test(line);
       const hasLetters = /[a-zA-ZäöüÄÖÜß]/.test(line);
@@ -44,7 +48,6 @@ export default function App() {
     const extractedNames = parseMessyData(inputText);
     
     if (extractedNames.length === 0) {
-      // In-App Benachrichtigung statt Browser-Alert
       return;
     }
 
