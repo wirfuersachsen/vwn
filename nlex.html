@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Namens-Checkliste</title>
+    <title>Ehrenamt-Auszahlungsprüfung PRO</title>
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -11,73 +11,108 @@
     <style>
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .cat-regular { border-left: 4px solid #10b981; }
+        .cat-overpayment { border-left: 4px solid #f59e0b; }
+        .cat-illegal { border-left: 4px solid #ef4444; }
+
         @media print {
-            .no-print { display: none; }
-            .print-only { display: block; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
             body { background: white; padding: 0; }
-            .shadow-xl { shadow: none; border: none; }
+            .card { border: 1px solid #e2e8f0; box-shadow: none !important; margin-bottom: 1rem; break-inside: avoid; }
         }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans text-slate-900">
+<body class="bg-slate-50 min-h-screen font-sans text-slate-900 pb-20">
 
     <div id="app" class="p-4 md:p-8">
-        <div class="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+        <div class="max-w-6xl mx-auto">
             
             <!-- Header -->
-            <div class="bg-indigo-600 p-8 text-white">
-                <div class="flex items-center gap-4">
-                    <div class="p-3 bg-white/20 rounded-2xl">
-                        <i data-lucide="list-checks" class="w-8 h-8"></i>
+            <div class="bg-indigo-800 p-6 md:p-8 text-white rounded-t-3xl shadow-lg">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-white/20 rounded-2xl">
+                            <i data-lucide="shield-check" class="w-8 h-8"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold tracking-tight">Prüfung Aufwandsentschädigungen</h1>
+                            <p class="text-indigo-100 text-sm opacity-90">Kategorisierung & Zeitraum-Erfassung</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 class="text-2xl font-bold tracking-tight">Checklisten-Generator</h1>
-                        <p class="text-indigo-100 text-sm mt-1">Sichere Namens-Extraktion</p>
+                    
+                    <!-- Globaler Gesamtstatus -->
+                    <div id="summaryStats" class="hidden grid grid-cols-3 gap-4 bg-black/20 p-4 rounded-2xl backdrop-blur-sm border border-white/10 min-w-[350px]">
+                        <div class="text-center">
+                            <div class="text-[10px] uppercase font-bold opacity-60 mb-1 tracking-wider">Gesamt Soll</div>
+                            <div id="totalSollDisplay" class="text-sm md:text-base font-mono font-bold">0,00 €</div>
+                        </div>
+                        <div class="text-center border-x border-white/10 px-2">
+                            <div class="text-[10px] uppercase font-bold opacity-60 mb-1 tracking-wider">Gesamt Anerkannt</div>
+                            <div id="totalAnerkanntDisplay" class="text-sm md:text-base font-mono font-bold text-emerald-400">0,00 €</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-[10px] uppercase font-bold opacity-60 mb-1 tracking-wider">Bilanz</div>
+                            <div id="totalDiffDisplay" class="text-sm md:text-base font-mono font-bold">0,00 €</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="p-8">
+            <div class="bg-white rounded-b-3xl shadow-xl border border-slate-200 overflow-hidden">
+                
                 <!-- Eingabe-Ansicht -->
-                <div id="inputView" class="space-y-6">
-                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex gap-3 text-blue-800 text-sm">
-                        <i data-lucide="info" class="w-5 h-5 shrink-0"></i>
-                        <p>Fügen Sie Ihre Rohdaten hier ein. Die App filtert Adressen, PLZ und Beträge automatisch heraus.</p>
+                <div id="inputView" class="p-8 space-y-6">
+                    <div class="bg-indigo-50 border border-indigo-100 p-5 rounded-2xl flex gap-4 text-indigo-900 text-sm">
+                        <i data-lucide="info" class="w-6 h-6 shrink-0 text-indigo-500"></i>
+                        <div>
+                            <p class="font-bold mb-1">Anleitung:</p>
+                            <p>Fügen Sie die Datenblöcke ein. Die App erkennt Namen und Zielbeträge (€). In der Prüfung können Sie dann Belege kategorisieren, Zeiträume zuweisen und festlegen, welche Beträge anerkannt werden.</p>
+                        </div>
                     </div>
 
                     <div class="space-y-2">
-                        <label class="block text-sm font-semibold text-slate-700 ml-1">Daten einfügen:</label>
+                        <label class="block text-sm font-bold text-slate-700 ml-1">Rohdaten hier einfügen:</label>
                         <textarea id="dataInput" 
                             class="w-full h-80 p-5 border border-slate-300 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all resize-none bg-slate-50 text-slate-800 font-mono text-sm"
-                            placeholder="Daten hier hineinkopieren..."></textarea>
+                            placeholder="Name, Vorname&#10;...&#10;270,00 €"></textarea>
                     </div>
 
-                    <button onclick="generateList()" 
+                    <button onclick="processInputData()" 
                         class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
-                        Liste generieren
+                        <i data-lucide="list-plus" class="w-5 h-5"></i> Prüfung starten
                     </button>
                 </div>
 
-                <!-- Listen-Ansicht (Standard versteckt) -->
-                <div id="listView" class="hidden space-y-6">
-                    <div class="flex justify-between items-end border-b pb-4 no-print">
+                <!-- Listen-Ansicht -->
+                <div id="listView" class="hidden p-4 md:p-8 space-y-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print border-b border-slate-100 pb-6">
                         <div>
-                            <h2 class="text-xl font-bold text-slate-800">Ihre Checkliste</h2>
-                            <p id="countLabel" class="text-slate-500 text-sm">0 Einträge extrahiert</p>
+                            <h2 class="text-xl font-bold text-slate-800">Prüfprotokoll</h2>
+                            <p id="countLabel" class="text-slate-500 text-sm">Bereit zur Auswertung</p>
                         </div>
-                        <button onclick="resetApp()" class="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2 font-semibold">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i> Daten löschen
-                        </button>
+                        <div class="flex gap-2">
+                            <button onclick="addManualPerson()" class="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-colors flex items-center gap-2 font-bold text-sm">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i> Person hinzufügen
+                            </button>
+                            <button onclick="resetApp()" class="px-4 py-2 text-sm text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2 font-semibold">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Zurück
+                            </button>
+                        </div>
                     </div>
 
-                    <div id="listContainer" class="space-y-2 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                        <!-- Namen werden hier eingefügt -->
+                    <div id="listContainer" class="space-y-10">
+                        <!-- Einträge werden hier dynamisch eingefügt -->
                     </div>
 
-                    <div class="pt-4 flex gap-3 no-print">
-                        <button onclick="window.print()" class="flex-1 py-3 bg-slate-800 text-white font-bold rounded-2xl hover:bg-slate-900 transition-colors flex items-center justify-center gap-2">
-                            <i data-lucide="printer" class="w-5 h-5"></i> Drucken
+                    <div class="pt-8 flex gap-3 no-print">
+                        <button onclick="window.print()" class="flex-1 py-4 bg-slate-800 text-white font-bold rounded-2xl hover:bg-slate-900 transition-colors flex items-center justify-center gap-2">
+                            <i data-lucide="printer" class="w-5 h-5"></i> Bericht drucken
                         </button>
                     </div>
                 </div>
@@ -86,76 +121,289 @@
     </div>
 
     <script>
-        let namesData = [];
+        let userData = [];
+        const categories = [
+            { id: "Regulär", label: "Regulär", color: "text-emerald-600", border: "cat-regular" },
+            { id: "Überzahlung", label: "Überzahlung > 70€", color: "text-amber-600", border: "cat-overpayment" },
+            { id: "vertragswidrig", label: "vertragswidrig", color: "text-red-600", border: "cat-illegal" }
+        ];
+        let lastFocusedId = null;
 
-        function parseData(text) {
-            const lines = text.split(/\r?\n/).map(line => line.trim());
-            const extracted = [];
-            
-            lines.forEach(line => {
-                const startsWithNumber = /^\d/.test(line);
-                const hasLetters = /[a-zA-ZäöüÄÖÜß]/.test(line);
-                const hasCurrency = /€|\$|CHF/.test(line);
-                
-                if (line.length > 2 && !startsWithNumber && !hasCurrency && hasLetters) {
-                    extracted.push(line);
-                }
-            });
-            return [...new Set(extracted)];
+        function parseCurrency(str) {
+            if (!str) return 0;
+            const clean = str.replace(/[^-0-9,]/g, '').replace(',', '.');
+            return parseFloat(clean) || 0;
         }
 
-        function generateList() {
-            const input = document.getElementById('dataInput').value;
-            const extracted = parseData(input);
+        function formatCurrency(val) {
+            return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val);
+        }
 
-            if (extracted.length === 0) {
-                alert("Keine Namen gefunden.");
+        function processInputData() {
+            const input = document.getElementById('dataInput').value;
+            const lines = input.split(/\n/);
+            const processed = [];
+            let currentName = null;
+
+            lines.forEach((line) => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+
+                if (/[a-zA-Z]/.test(trimmed) && !/^\d/.test(trimmed) && !trimmed.includes('€') && trimmed.length > 3) {
+                    currentName = trimmed;
+                } 
+                else if (trimmed.includes('€')) {
+                    let amount = parseCurrency(trimmed);
+                    if (currentName) {
+                        processed.push({
+                            id: 'p-' + Math.random().toString(36).substr(2, 9),
+                            name: currentName,
+                            targetAmount: amount,
+                            payments: [{ amount: 0, recognizedAmount: 0, category: "Regulär", period: "" }]
+                        });
+                        currentName = null;
+                    }
+                }
+            });
+
+            if (processed.length === 0) {
+                alert("Keine Daten erkannt. Bitte Format prüfen.");
                 return;
             }
 
-            namesData = extracted.map((name, index) => ({ id: index, text: name, checked: false }));
+            userData = processed;
+            renderView();
+        }
+
+        function addManualPerson() {
+            const name = prompt("Name:");
+            if (!name) return;
+            const target = parseCurrency(prompt("Soll-Betrag (Vorgabe):", "0"));
+            userData.unshift({
+                id: 'p-' + Date.now(),
+                name: name,
+                targetAmount: target,
+                payments: [{ amount: 0, recognizedAmount: 0, category: "Regulär", period: "" }]
+            });
             renderList();
-            
+        }
+
+        function renderView() {
             document.getElementById('inputView').classList.add('hidden');
             document.getElementById('listView').classList.remove('hidden');
+            document.getElementById('summaryStats').classList.remove('hidden');
+            renderList();
         }
 
         function renderList() {
             const container = document.getElementById('listContainer');
             const countLabel = document.getElementById('countLabel');
             container.innerHTML = '';
-            countLabel.innerText = `${namesData.length} Einträge extrahiert`;
+            
+            let totalSoll = 0;
+            let totalAnerkannt = 0;
 
-            namesData.forEach(item => {
-                const div = document.createElement('div');
-                div.className = `group flex items-center justify-between p-4 cursor-pointer rounded-2xl border transition-all ${item.checked ? 'bg-emerald-50 border-emerald-100 shadow-inner' : 'bg-white border-slate-100 hover:border-indigo-200'}`;
-                div.onclick = () => toggleItem(item.id);
+            userData.forEach(person => {
+                const sumBelege = person.payments.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
+                const sumAnerkannt = person.payments.reduce((acc, p) => {
+                    return acc + (p.category === "Regulär" ? (parseFloat(p.amount) || 0) : (parseFloat(p.recognizedAmount) || 0));
+                }, 0);
                 
-                div.innerHTML = `
-                    <span class="text-base font-medium ${item.checked ? 'text-emerald-700/50 line-through' : 'text-slate-700'}">
-                        ${item.text}
-                    </span>
-                    <div class="${item.checked ? 'text-emerald-600' : 'text-slate-300'}">
-                        <i data-lucide="${item.checked ? 'check-square' : 'square'}" class="w-6 h-6"></i>
+                totalSoll += person.targetAmount;
+                totalAnerkannt += sumAnerkannt;
+
+                const diffToSoll = sumAnerkannt - person.targetAmount;
+
+                const card = document.createElement('div');
+                card.className = `card bg-white border border-slate-200 rounded-3xl p-6 shadow-sm transition-all hover:shadow-md`;
+                
+                card.innerHTML = `
+                    <div class="flex flex-col lg:flex-row justify-between gap-6 mb-8 pb-6 border-b border-slate-100">
+                        <div class="space-y-3">
+                            <h3 class="text-2xl font-black text-slate-800 tracking-tight">${person.name}</h3>
+                            <div class="flex items-center gap-3">
+                                <span class="bg-indigo-600 text-white px-4 py-1.5 rounded-xl font-black text-sm shadow-sm">
+                                    SOLL-VORGABE: ${formatCurrency(person.targetAmount)}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-3 md:gap-6 bg-slate-50 p-4 rounded-2xl border border-slate-200/50 shadow-inner">
+                            <div class="text-center">
+                                <div class="text-[9px] uppercase font-black text-slate-400 mb-1 tracking-widest">Summe Belege</div>
+                                <div class="font-mono font-bold text-slate-600 text-sm md:text-base">${formatCurrency(sumBelege)}</div>
+                            </div>
+                            <div class="text-center border-x border-slate-200 px-4">
+                                <div class="text-[9px] uppercase font-black text-slate-400 mb-1 tracking-widest">Anerkannt</div>
+                                <div class="font-mono font-black text-indigo-700 text-sm md:text-base">${formatCurrency(sumAnerkannt)}</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-[9px] uppercase font-black text-slate-400 mb-1 tracking-widest">Bilanz</div>
+                                <div class="font-mono font-black text-sm md:text-base ${diffToSoll > 0.01 ? 'text-blue-600' : (diffToSoll < -0.01 ? 'text-red-600' : 'text-emerald-600')}">
+                                    ${formatCurrency(diffToSoll)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 no-print">
+                        <div class="grid grid-cols-1 gap-3">
+                            ${person.payments.map((p, idx) => {
+                                const inputId = `input-${person.id}-${idx}`;
+                                const recId = `rec-${person.id}-${idx}`;
+                                const periodId = `period-${person.id}-${idx}`;
+                                const currentCat = categories.find(c => c.id === p.category) || categories[0];
+                                
+                                return `
+                                <div class="flex flex-wrap md:flex-nowrap gap-3 items-center p-4 rounded-2xl bg-white border shadow-sm ${currentCat.border}">
+                                    <div class="w-full md:w-24">
+                                        <label class="text-[9px] uppercase font-bold text-slate-400 block mb-1">Zeitraum</label>
+                                        <input type="text" id="${periodId}"
+                                            class="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                            placeholder="z.B. 01" 
+                                            value="${p.period || ''}" 
+                                            onchange="updatePayment('${person.id}', ${idx}, null, null, null, this.value)">
+                                    </div>
+
+                                    <div class="w-full md:w-32">
+                                        <label class="text-[9px] uppercase font-bold text-slate-400 block mb-1">Belegwert (€)</label>
+                                        <input type="number" step="0.01" id="${inputId}"
+                                            class="w-full p-2 border border-slate-200 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                            placeholder="0,00" 
+                                            value="${p.amount || ''}" 
+                                            onkeydown="handleKeyDown(event, '${person.id}', ${idx})"
+                                            onchange="updatePayment('${person.id}', ${idx}, this.value, null, null, null)">
+                                    </div>
+                                    
+                                    <div class="flex-1 min-w-[150px]">
+                                        <label class="text-[9px] uppercase font-bold text-slate-400 block mb-1">Einstufung</label>
+                                        <select 
+                                            class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white font-bold ${currentCat.color} focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            onchange="updatePayment('${person.id}', ${idx}, null, this.value, null, null)">
+                                            ${categories.map(cat => `<option value="${cat.id}" ${p.category === cat.id ? 'selected' : ''}>${cat.label}</option>`).join('')}
+                                        </select>
+                                    </div>
+
+                                    ${p.category !== "Regulär" ? `
+                                        <div class="w-full md:w-40 animate-in fade-in zoom-in duration-200">
+                                            <label class="text-[9px] uppercase font-bold text-indigo-500 block mb-1">Anerkannter Betrag</label>
+                                            <input type="number" step="0.01" id="${recId}"
+                                                class="w-full p-2 border-2 border-indigo-200 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none bg-indigo-50/30" 
+                                                placeholder="0,00" 
+                                                value="${p.recognizedAmount || ''}" 
+                                                onchange="updatePayment('${person.id}', ${idx}, null, null, this.value, null)">
+                                        </div>
+                                    ` : `
+                                        <div class="hidden md:block w-40 text-center text-[10px] text-emerald-600 font-bold bg-emerald-50 py-2 rounded-lg border border-emerald-100">
+                                            Voll anerkannt
+                                        </div>
+                                    `}
+
+                                    <div class="flex items-center gap-1">
+                                        <button onclick="removePayment('${person.id}', ${idx})" class="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                        ${idx === person.payments.length - 1 ? `
+                                            <button onclick="addNewRow('${person.id}')" class="p-2 text-indigo-500 hover:text-indigo-700">
+                                                <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `}).join('')}
+                        </div>
+                    </div>
+
+                    <div class="hidden print-only mt-4 pt-4 border-t border-dotted">
+                        <table class="w-full text-[10px] border-collapse">
+                            <thead>
+                                <tr class="text-slate-400 border-b">
+                                    <th class="text-left py-1">Zeitraum</th>
+                                    <th class="text-left py-1">Einstufung</th>
+                                    <th class="text-right py-1">Belegwert</th>
+                                    <th class="text-right py-1">Anerkannt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${person.payments.map(p => `
+                                    <tr class="border-b border-slate-50">
+                                        <td class="py-1">${p.period || '—'}</td>
+                                        <td class="py-1">${p.category}</td>
+                                        <td class="text-right font-mono py-1">${formatCurrency(p.amount)}</td>
+                                        <td class="text-right font-mono py-1">${formatCurrency(p.category === 'Regulär' ? p.amount : p.recognizedAmount)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
                 `;
-                container.appendChild(div);
+                container.appendChild(card);
             });
+
+            countLabel.innerText = `${userData.length} Personen geladen`;
+            
+            // Globale Statistiken aktualisieren
+            document.getElementById('totalSollDisplay').innerText = formatCurrency(totalSoll);
+            document.getElementById('totalAnerkanntDisplay').innerText = formatCurrency(totalAnerkannt);
+            
+            const totalDiff = totalAnerkannt - totalSoll;
+            const totalDiffDisplay = document.getElementById('totalDiffDisplay');
+            totalDiffDisplay.innerText = formatCurrency(totalDiff);
+            totalDiffDisplay.className = `text-sm md:text-base font-mono font-bold ${totalDiff < -0.01 ? 'text-red-400' : 'text-emerald-400'}`;
+            
             lucide.createIcons();
+            if (lastFocusedId) {
+                const el = document.getElementById(lastFocusedId);
+                if (el) { el.focus(); lastFocusedId = null; }
+            }
         }
 
-        function toggleItem(id) {
-            namesData = namesData.map(item => item.id === id ? { ...item, checked: !item.checked } : item);
-            renderList();
+        function handleKeyDown(event, personId, idx) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                updatePayment(personId, idx, event.target.value, null, null, null, false);
+                addNewRow(personId);
+            }
+        }
+
+        function addNewRow(personId) {
+            const person = userData.find(p => p.id === personId);
+            if (person) {
+                person.payments.push({ amount: 0, recognizedAmount: 0, category: "Regulär", period: "" });
+                lastFocusedId = `input-${personId}-${person.payments.length - 1}`;
+                renderList();
+            }
+        }
+
+        function updatePayment(personId, payIdx, amount, category, recognized, period, shouldRender = true) {
+            const person = userData.find(p => p.id === personId);
+            if (!person) return;
+
+            const p = person.payments[payIdx];
+            if (amount !== null) p.amount = parseFloat(amount) || 0;
+            if (category !== null) p.category = category;
+            if (recognized !== null) p.recognizedAmount = parseFloat(recognized) || 0;
+            if (period !== null) p.period = period;
+
+            if (shouldRender) renderList();
+        }
+
+        function removePayment(personId, payIdx) {
+            const person = userData.find(p => p.id === personId);
+            if (person && person.payments.length > 1) {
+                person.payments.splice(payIdx, 1);
+                renderList();
+            }
         }
 
         function resetApp() {
-            document.getElementById('dataInput').value = '';
-            document.getElementById('inputView').classList.remove('hidden');
-            document.getElementById('listView').classList.add('hidden');
+            if (confirm("Zurück zur Dateneingabe? Aktuelle Prüfungen gehen verloren.")) {
+                document.getElementById('inputView').classList.remove('hidden');
+                document.getElementById('listView').classList.add('hidden');
+                document.getElementById('summaryStats').classList.add('hidden');
+            }
         }
 
-        // Icons beim Start laden
         lucide.createIcons();
     </script>
 </body>
