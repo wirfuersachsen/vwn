@@ -92,10 +92,21 @@
                 <!-- Listen-Ansicht -->
                 <div id="listView" class="hidden p-4 md:p-8 space-y-6">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print border-b border-slate-100 pb-6">
-                        <div>
+                        <div class="space-y-1">
                             <h2 class="text-xl font-bold text-slate-800">Prüfprotokoll</h2>
                             <p id="countLabel" class="text-slate-500 text-sm">Bereit zur Auswertung</p>
                         </div>
+                        
+                        <!-- Suchfunktion -->
+                        <div class="relative flex-1 max-w-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
+                            </div>
+                            <input type="text" id="nameSearch" oninput="handleSearch(this.value)"
+                                class="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all"
+                                placeholder="Name suchen...">
+                        </div>
+
                         <div class="flex gap-2">
                             <button onclick="addManualPerson()" class="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-colors flex items-center gap-2 font-bold text-sm">
                                 <i data-lucide="user-plus" class="w-4 h-4"></i> Person hinzufügen
@@ -122,6 +133,7 @@
 
     <script>
         let userData = [];
+        let searchTerm = "";
         const categories = [
             { id: "Regulär", label: "Regulär", color: "text-emerald-600", border: "cat-regular" },
             { id: "Überzahlung", label: "Überzahlung > 70€", color: "text-amber-600", border: "cat-overpayment" },
@@ -137,6 +149,11 @@
 
         function formatCurrency(val) {
             return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val);
+        }
+
+        function handleSearch(val) {
+            searchTerm = val;
+            renderList();
         }
 
         function processInputData() {
@@ -203,15 +220,25 @@
             let totalSoll = 0;
             let totalAnerkannt = 0;
 
-            userData.forEach(person => {
+            // Filtere die Daten basierend auf dem Suchbegriff
+            const filteredData = userData.filter(p => 
+                p.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            // Berechne Gesamtstatistiken immer auf Basis ALLER Daten
+            userData.forEach(p => {
+                totalSoll += p.targetAmount;
+                totalAnerkannt += p.payments.reduce((acc, pay) => {
+                    return acc + (pay.category === "Regulär" ? (parseFloat(pay.amount) || 0) : (parseFloat(pay.recognizedAmount) || 0));
+                }, 0);
+            });
+
+            filteredData.forEach(person => {
                 const sumBelege = person.payments.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
                 const sumAnerkannt = person.payments.reduce((acc, p) => {
                     return acc + (p.category === "Regulär" ? (parseFloat(p.amount) || 0) : (parseFloat(p.recognizedAmount) || 0));
                 }, 0);
                 
-                totalSoll += person.targetAmount;
-                totalAnerkannt += sumAnerkannt;
-
                 const diffToSoll = sumAnerkannt - person.targetAmount;
 
                 const card = document.createElement('div');
@@ -340,7 +367,12 @@
                 container.appendChild(card);
             });
 
-            countLabel.innerText = `${userData.length} Personen geladen`;
+            // Count-Label aktualisieren
+            if (searchTerm) {
+                countLabel.innerText = `${filteredData.length} von ${userData.length} Personen gefunden`;
+            } else {
+                countLabel.innerText = `${userData.length} Personen geladen`;
+            }
             
             // Globale Statistiken aktualisieren
             document.getElementById('totalSollDisplay').innerText = formatCurrency(totalSoll);
@@ -398,6 +430,8 @@
 
         function resetApp() {
             if (confirm("Zurück zur Dateneingabe? Aktuelle Prüfungen gehen verloren.")) {
+                searchTerm = ""; // Suche zurücksetzen
+                document.getElementById('nameSearch').value = "";
                 document.getElementById('inputView').classList.remove('hidden');
                 document.getElementById('listView').classList.add('hidden');
                 document.getElementById('summaryStats').classList.add('hidden');
