@@ -44,22 +44,22 @@
                         </div>
                         <div>
                             <h1 class="text-2xl font-bold tracking-tight">Prüfung Aufwandsentschädigungen</h1>
-                            <p class="text-indigo-100 text-sm opacity-90">Kategorisierung & Excel-Export</p>
+                            <p class="text-indigo-100 text-sm opacity-90">Kategorisierung & Fördermittelabgleich</p>
                         </div>
                     </div>
                     
                     <!-- Globaler Gesamtstatus -->
                     <div id="summaryStats" class="hidden grid grid-cols-3 gap-4 bg-black/20 p-4 rounded-2xl backdrop-blur-sm border border-white/10 min-w-[350px]">
                         <div class="text-center">
-                            <div class="text-[10px] uppercase font-bold opacity-60 mb-1 tracking-wider">Gesamt Soll</div>
-                            <div id="totalSollDisplay" class="text-sm md:text-base font-mono font-bold">0,00 €</div>
+                            <div class="text-[10px] uppercase font-bold opacity-60 mb-1 tracking-wider">Fördersumme</div>
+                            <div id="totalGrantDisplay" class="text-sm md:text-base font-mono font-bold">0,00 €</div>
                         </div>
                         <div class="text-center border-x border-white/10 px-2">
-                            <div class="text-[10px] uppercase font-bold opacity-60 mb-1 tracking-wider">Gesamt Anerkannt</div>
-                            <div id="totalAnerkanntDisplay" class="text-sm md:text-base font-mono font-bold text-emerald-400">0,00 €</div>
+                            <div class="text-[10px] uppercase font-bold opacity-60 mb-1 tracking-wider">Belege Anerkannt</div>
+                            <div id="totalAnerkanntDisplay" class="text-sm md:text-base font-mono font-bold text-white">0,00 €</div>
                         </div>
                         <div class="text-center">
-                            <div class="text-[10px] uppercase font-bold opacity-60 mb-1 tracking-wider">Bilanz</div>
+                            <div id="bilanzLabel" class="text-[10px] uppercase font-bold opacity-60 mb-1 tracking-wider">Bilanz</div>
                             <div id="totalDiffDisplay" class="text-sm md:text-base font-mono font-bold">0,00 €</div>
                         </div>
                     </div>
@@ -74,7 +74,7 @@
                         <i data-lucide="info" class="w-6 h-6 shrink-0 text-indigo-500"></i>
                         <div>
                             <p class="font-bold mb-1">Anleitung:</p>
-                            <p>Fügen Sie die Datenblöcke ein. Die App erkennt Namen und Zielbeträge (€). In der Prüfung können Sie dann Belege kategorisieren, Zeiträume zuweisen und festlegen, welche Beträge anerkannt werden.</p>
+                            <p>Fügen Sie die Datenblöcke ein. Die App erkennt Namen und Zielbeträge (€). In der Prüfung können Sie dann Belege kategorisieren, Zeiträume zuweisen und die Förderung abgleichen.</p>
                         </div>
                     </div>
 
@@ -93,7 +93,33 @@
 
                 <!-- Listen-Ansicht -->
                 <div id="listView" class="hidden p-4 md:p-8 space-y-6">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print border-b border-slate-100 pb-6">
+                    
+                    <!-- Fördersumme Eingabebereich -->
+                    <div class="bg-slate-50 border border-slate-200 p-6 rounded-2xl no-print">
+                        <div class="flex flex-col md:flex-row items-center gap-6">
+                            <div class="flex-1 space-y-2">
+                                <label class="flex items-center gap-2 text-sm font-black text-slate-700 uppercase tracking-wider">
+                                    <i data-lucide="file-text" class="w-4 h-4 text-indigo-600"></i>
+                                    Fördersumme laut Vertrag (€)
+                                </label>
+                                <div class="relative">
+                                    <input type="text" id="grantAmountInput" value="0,00"
+                                        class="w-full p-4 border-2 border-slate-200 rounded-xl text-xl font-mono font-bold focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all shadow-sm"
+                                        onfocus="this.select()"
+                                        onchange="updateGrantAmount(this.value)">
+                                    <div class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">€</div>
+                                </div>
+                            </div>
+                            <div class="hidden md:block w-px h-16 bg-slate-200"></div>
+                            <div class="w-full md:w-1/3 p-4 bg-white rounded-xl border border-slate-200/50 shadow-sm">
+                                <div class="text-[10px] uppercase font-black text-slate-400 mb-1">Maximal Anerkannt</div>
+                                <div id="maxRecognizedDisplay" class="text-xl font-mono font-black text-slate-800">0,00 €</div>
+                                <p class="text-[10px] text-slate-400 mt-1 italic">Entspricht der vertraglichen Förderung.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print border-b border-slate-100 pb-6 pt-4">
                         <div class="space-y-1">
                             <h2 class="text-xl font-bold text-slate-800">Prüfprotokoll</h2>
                             <p id="countLabel" class="text-slate-500 text-sm">Bereit zur Auswertung</p>
@@ -139,6 +165,8 @@
     <script>
         let userData = [];
         let searchTerm = "";
+        let globalGrantAmount = 0;
+
         const categories = [
             { id: "Regulär", label: "Regulär", color: "text-emerald-600", border: "cat-regular" },
             { id: "Überzahlung", label: "Überzahlung", color: "text-amber-600", border: "cat-overpayment" },
@@ -146,14 +174,41 @@
         ];
         let lastFocusedId = null;
 
+        /**
+         * Verarbeitet String-Eingaben (z.B. "6.600,00" oder "6600") zu einem Float.
+         */
         function parseCurrency(str) {
             if (!str) return 0;
-            const clean = str.replace(/[^-0-9,]/g, '').replace(',', '.');
+            if (typeof str === 'number') return str;
+            // Entfernt Tausender-Punkte, ersetzt Komma durch Punkt für JS-Float
+            const clean = str.toString()
+                .replace(/\./g, '')
+                .replace(',', '.')
+                .replace(/[^-0-9.]/g, '');
             return parseFloat(clean) || 0;
         }
 
+        /**
+         * Formatiert eine Zahl für die Anzeige in einer Tabelle (mit €).
+         */
         function formatCurrency(val) {
             return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val);
+        }
+
+        /**
+         * Formatiert eine Zahl für ein Eingabefeld (ohne €, nur 1.234,56).
+         */
+        function formatInputNumber(val) {
+            if (val === 0) return "0,00";
+            return new Intl.NumberFormat('de-DE', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            }).format(val);
+        }
+
+        function updateGrantAmount(val) {
+            globalGrantAmount = parseCurrency(val);
+            renderList();
         }
 
         function handleSearch(val) {
@@ -222,16 +277,16 @@
             const countLabel = document.getElementById('countLabel');
             container.innerHTML = '';
             
-            let totalSoll = 0;
-            let totalAnerkannt = 0;
+            let totalSollPersons = 0;
+            let totalAnerkanntBelege = 0;
 
             const filteredData = userData.filter(p => 
                 p.name.toLowerCase().includes(searchTerm.toLowerCase())
             );
 
             userData.forEach(p => {
-                totalSoll += p.targetAmount;
-                totalAnerkannt += p.payments.reduce((acc, pay) => {
+                totalSollPersons += p.targetAmount;
+                totalAnerkanntBelege += p.payments.reduce((acc, pay) => {
                     return acc + (pay.category === "Regulär" ? (parseFloat(pay.amount) || 0) : (parseFloat(pay.recognizedAmount) || 0));
                 }, 0);
             });
@@ -253,7 +308,7 @@
                             <h3 class="text-2xl font-black text-slate-800 tracking-tight">${person.name}</h3>
                             <div class="flex items-center gap-3">
                                 <span class="bg-indigo-600 text-white px-4 py-1.5 rounded-xl font-black text-sm shadow-sm">
-                                    SOLL-VORGABE: ${formatCurrency(person.targetAmount)}
+                                    PERSON-SOLL: ${formatCurrency(person.targetAmount)}
                                 </span>
                             </div>
                         </div>
@@ -268,7 +323,7 @@
                                 <div class="font-mono font-black text-indigo-700 text-sm md:text-base">${formatCurrency(sumAnerkannt)}</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-[9px] uppercase font-black text-slate-400 mb-1 tracking-widest">Bilanz</div>
+                                <div class="text-[9px] uppercase font-black text-slate-400 mb-1 tracking-widest">Bilanz Person</div>
                                 <div class="font-mono font-black text-sm md:text-base ${diffToSoll > 0.01 ? 'text-blue-600' : (diffToSoll < -0.01 ? 'text-red-600' : 'text-emerald-600')}">
                                     ${formatCurrency(diffToSoll)}
                                 </div>
@@ -297,10 +352,11 @@
 
                                     <div class="w-full md:w-32">
                                         <label class="text-[9px] uppercase font-bold text-slate-400 block mb-1">Belegwert (€)</label>
-                                        <input type="number" step="0.01" id="${inputId}"
+                                        <input type="text" id="${inputId}"
                                             class="w-full p-2 border border-slate-200 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none" 
                                             placeholder="0,00" 
-                                            value="${p.amount || ''}" 
+                                            value="${formatInputNumber(p.amount)}" 
+                                            onfocus="this.select()"
                                             onkeydown="handleKeyDown(event, '${person.id}', ${idx})"
                                             onchange="updatePayment('${person.id}', ${idx}, this.value, null, null, null)">
                                     </div>
@@ -317,10 +373,11 @@
                                     ${p.category !== "Regulär" ? `
                                         <div class="w-full md:w-40 animate-in fade-in zoom-in duration-200">
                                             <label class="text-[9px] uppercase font-bold text-indigo-500 block mb-1">Anerkannter Betrag</label>
-                                            <input type="number" step="0.01" id="${recId}"
+                                            <input type="text" id="${recId}"
                                                 class="w-full p-2 border-2 border-indigo-200 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none bg-indigo-50/30" 
                                                 placeholder="0,00" 
-                                                value="${p.recognizedAmount || ''}" 
+                                                value="${formatInputNumber(p.recognizedAmount)}" 
+                                                onfocus="this.select()"
                                                 onchange="updatePayment('${person.id}', ${idx}, null, null, this.value, null)">
                                         </div>
                                     ` : `
@@ -376,13 +433,30 @@
                 countLabel.innerText = `${userData.length} Personen geladen`;
             }
             
-            document.getElementById('totalSollDisplay').innerText = formatCurrency(totalSoll);
-            document.getElementById('totalAnerkanntDisplay').innerText = formatCurrency(totalAnerkannt);
-            
-            const totalDiff = totalAnerkannt - totalSoll;
+            // Globale Bilanzierung
+            const bilanz = totalAnerkanntBelege - globalGrantAmount;
+            const bilanzLabel = document.getElementById('bilanzLabel');
             const totalDiffDisplay = document.getElementById('totalDiffDisplay');
-            totalDiffDisplay.innerText = formatCurrency(totalDiff);
-            totalDiffDisplay.className = `text-sm md:text-base font-mono font-bold ${totalDiff < -0.01 ? 'text-red-400' : 'text-emerald-400'}`;
+
+            // Formatiertes Display der Fördersumme im Input-Feld sicherstellen
+            document.getElementById('grantAmountInput').value = formatInputNumber(globalGrantAmount);
+            document.getElementById('totalGrantDisplay').innerText = formatCurrency(globalGrantAmount);
+            document.getElementById('totalAnerkanntDisplay').innerText = formatCurrency(totalAnerkanntBelege);
+            document.getElementById('maxRecognizedDisplay').innerText = formatCurrency(globalGrantAmount);
+            
+            if (bilanz > 0.01) {
+                bilanzLabel.innerText = "Eigenmittel";
+                totalDiffDisplay.innerText = formatCurrency(bilanz);
+                totalDiffDisplay.className = "text-sm md:text-base font-mono font-bold text-amber-400";
+            } else if (bilanz < -0.01) {
+                bilanzLabel.innerText = "Rückforderung";
+                totalDiffDisplay.innerText = formatCurrency(Math.abs(bilanz));
+                totalDiffDisplay.className = "text-sm md:text-base font-mono font-bold text-red-400";
+            } else {
+                bilanzLabel.innerText = "Bilanz";
+                totalDiffDisplay.innerText = "Ausgeglichen";
+                totalDiffDisplay.className = "text-sm md:text-base font-mono font-bold text-emerald-400";
+            }
             
             lucide.createIcons();
             if (lastFocusedId) {
@@ -413,9 +487,9 @@
             if (!person) return;
 
             const p = person.payments[payIdx];
-            if (amount !== null) p.amount = parseFloat(amount) || 0;
+            if (amount !== null) p.amount = parseCurrency(amount);
             if (category !== null) p.category = category;
-            if (recognized !== null) p.recognizedAmount = parseFloat(recognized) || 0;
+            if (recognized !== null) p.recognizedAmount = parseCurrency(recognized);
             if (period !== null) p.period = period;
 
             if (shouldRender) renderList();
@@ -433,45 +507,48 @@
             if (userData.length === 0) return;
 
             const exportData = [];
-            
+            const totalAnerkannt = userData.reduce((acc, person) => {
+                return acc + person.payments.reduce((pAcc, p) => pAcc + (p.category === "Regulär" ? p.amount : p.recognizedAmount), 0);
+            }, 0);
+
             userData.forEach(person => {
                 person.payments.forEach(p => {
-                    // Falls Betrag 0 und kein Zeitraum angegeben, überspringen wir leere Zeilen beim Export
                     if (p.amount === 0 && !p.period) return;
-
                     const anerkanntValue = p.category === "Regulär" ? p.amount : p.recognizedAmount;
-                    
                     exportData.push({
                         "Name": person.name,
                         "Soll-Vorgabe (€)": person.targetAmount,
                         "Zeitraum": p.period || "",
                         "Einstufung": p.category,
                         "Belegwert (€)": p.amount,
-                        "Anerkannter Betrag (€)": anerkanntValue,
-                        "Differenz zum Soll (Person)": (person.payments.reduce((acc, pay) => acc + (pay.category === "Regulär" ? pay.amount : pay.recognizedAmount), 0) - person.targetAmount)
+                        "Anerkannter Betrag (€)": anerkanntValue
                     });
                 });
             });
 
-            if (exportData.length === 0) {
-                alert("Keine erfassten Belege zum Exportieren gefunden.");
-                return;
-            }
+            // Bilanz-Zusammenfassung am Ende hinzufügen
+            exportData.push({});
+            exportData.push({ "Name": "ZUSAMMENFASSUNG PROJEKT" });
+            exportData.push({ "Name": "Fördersumme laut Vertrag", "Soll-Vorgabe (€)": globalGrantAmount });
+            exportData.push({ "Name": "Summe anerkannte Belege", "Soll-Vorgabe (€)": totalAnerkannt });
+            exportData.push({ 
+                "Name": totalAnerkannt > globalGrantAmount ? "Eigenmittel" : "Rückforderung", 
+                "Soll-Vorgabe (€)": Math.abs(totalAnerkannt - globalGrantAmount) 
+            });
 
-            // SheetJS Logik
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Prüfungsergebnisse");
-
-            // Export auslösen
-            const fileName = `Ehrenamt_Pruefung_${new Date().toISOString().split('T')[0]}.xlsx`;
+            const fileName = `Ehrenamt_Projekt_Pruefung_${new Date().toISOString().split('T')[0]}.xlsx`;
             XLSX.writeFile(wb, fileName);
         }
 
         function resetApp() {
             if (confirm("Zurück zur Dateneingabe? Aktuelle Prüfungen gehen verloren.")) {
                 searchTerm = ""; 
+                globalGrantAmount = 0;
                 document.getElementById('nameSearch').value = "";
+                document.getElementById('grantAmountInput').value = "0,00";
                 document.getElementById('inputView').classList.remove('hidden');
                 document.getElementById('listView').classList.add('hidden');
                 document.getElementById('summaryStats').classList.add('hidden');
