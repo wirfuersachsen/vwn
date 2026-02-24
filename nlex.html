@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS für Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
@@ -42,7 +44,7 @@
                         </div>
                         <div>
                             <h1 class="text-2xl font-bold tracking-tight">Prüfung Aufwandsentschädigungen</h1>
-                            <p class="text-indigo-100 text-sm opacity-90">Kategorisierung & Zeitraum-Erfassung</p>
+                            <p class="text-indigo-100 text-sm opacity-90">Kategorisierung & Excel-Export</p>
                         </div>
                     </div>
                     
@@ -121,9 +123,12 @@
                         <!-- Einträge werden hier dynamisch eingefügt -->
                     </div>
 
-                    <div class="pt-8 flex gap-3 no-print">
+                    <div class="pt-8 flex flex-col md:flex-row gap-3 no-print">
                         <button onclick="window.print()" class="flex-1 py-4 bg-slate-800 text-white font-bold rounded-2xl hover:bg-slate-900 transition-colors flex items-center justify-center gap-2">
-                            <i data-lucide="printer" class="w-5 h-5"></i> Bericht drucken
+                            <i data-lucide="printer" class="w-5 h-5"></i> Bericht drucken (PDF)
+                        </button>
+                        <button onclick="exportToExcel()" class="flex-1 py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-100">
+                            <i data-lucide="file-spreadsheet" class="w-5 h-5"></i> Excel-Export (.xlsx)
                         </button>
                     </div>
                 </div>
@@ -220,12 +225,10 @@
             let totalSoll = 0;
             let totalAnerkannt = 0;
 
-            // Filtere die Daten basierend auf dem Suchbegriff
             const filteredData = userData.filter(p => 
                 p.name.toLowerCase().includes(searchTerm.toLowerCase())
             );
 
-            // Berechne Gesamtstatistiken immer auf Basis ALLER Daten
             userData.forEach(p => {
                 totalSoll += p.targetAmount;
                 totalAnerkannt += p.payments.reduce((acc, pay) => {
@@ -367,14 +370,12 @@
                 container.appendChild(card);
             });
 
-            // Count-Label aktualisieren
             if (searchTerm) {
                 countLabel.innerText = `${filteredData.length} von ${userData.length} Personen gefunden`;
             } else {
                 countLabel.innerText = `${userData.length} Personen geladen`;
             }
             
-            // Globale Statistiken aktualisieren
             document.getElementById('totalSollDisplay').innerText = formatCurrency(totalSoll);
             document.getElementById('totalAnerkanntDisplay').innerText = formatCurrency(totalAnerkannt);
             
@@ -428,9 +429,48 @@
             }
         }
 
+        function exportToExcel() {
+            if (userData.length === 0) return;
+
+            const exportData = [];
+            
+            userData.forEach(person => {
+                person.payments.forEach(p => {
+                    // Falls Betrag 0 und kein Zeitraum angegeben, überspringen wir leere Zeilen beim Export
+                    if (p.amount === 0 && !p.period) return;
+
+                    const anerkanntValue = p.category === "Regulär" ? p.amount : p.recognizedAmount;
+                    
+                    exportData.push({
+                        "Name": person.name,
+                        "Soll-Vorgabe (€)": person.targetAmount,
+                        "Zeitraum": p.period || "",
+                        "Einstufung": p.category,
+                        "Belegwert (€)": p.amount,
+                        "Anerkannter Betrag (€)": anerkanntValue,
+                        "Differenz zum Soll (Person)": (person.payments.reduce((acc, pay) => acc + (pay.category === "Regulär" ? pay.amount : pay.recognizedAmount), 0) - person.targetAmount)
+                    });
+                });
+            });
+
+            if (exportData.length === 0) {
+                alert("Keine erfassten Belege zum Exportieren gefunden.");
+                return;
+            }
+
+            // SheetJS Logik
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Prüfungsergebnisse");
+
+            // Export auslösen
+            const fileName = `Ehrenamt_Pruefung_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+        }
+
         function resetApp() {
             if (confirm("Zurück zur Dateneingabe? Aktuelle Prüfungen gehen verloren.")) {
-                searchTerm = ""; // Suche zurücksetzen
+                searchTerm = ""; 
                 document.getElementById('nameSearch').value = "";
                 document.getElementById('inputView').classList.remove('hidden');
                 document.getElementById('listView').classList.add('hidden');
